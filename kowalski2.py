@@ -2,7 +2,7 @@ import re
 import copy
 import csv
 MAX_SKOLEM_DEPTH = 2
-MAX_ARITY = 5
+MAX_ARITY = 1
 MAX_ARGS = 3
 MAX_FACTS = 3
 rules = []
@@ -228,14 +228,30 @@ def parse_rule(line, skolem_list):
     #handle the skolems after the fact has been created
     return rule
 
-def parse_line(line):
+def parse_line(line, skolem_table, skolem_counter):
     #assert that the line is formatted properly
     format = re.search('\[(.)+\]', line)
     content = format.group(0)
     content = content[1:-1]
-    terms = content.split(", ")
+    terms = split(content, 0)
+    for i in range(len(terms)):
+        term = terms[i]
+        if(is_skolem(term)):
+            print(term)
+            key = ""
+            if(term not in skolem_table.values()):
+                print(skolem_counter)
+                key = "sk" + str(skolem_counter)
+                skolem_table[key] = term
+                skolem_counter = len(skolem_table.items()) + 1
+            else:
+                for k, value in skolem_table.items():
+                    if skolem_table[k] == term:
+                        key = k
+            terms[i] = key
     fact = Fact(terms[0], terms[1:], True)
     fact.rules_from.append(0)
+    print(fact)
     return fact
 
 def read_rules(rule_file, skolem):
@@ -347,14 +363,12 @@ def check_skolem(element, fact_part, table, dict):
             #we check this recursively
             for i in range(len(element[2])):
                 str = element[2][i]
-                print(str)
                 if(is_variable(str)):
                     if str in dict:
                         if dict[str] != skolem[2][i]:
                             return False
                     else:
                         dict[str] = skolem[2][i]
-                        print("Set {} to {} from check_skolem".format(str, skolem[2][i]))
             
             return True
 
@@ -509,7 +523,7 @@ def check_internal_subs(fact, clause, skolem_table, return_dict=False, existing=
                         dictionary["sk"] = []
                     if(current_fact.args[i-1] not in dictionary["sk"]):
                         dictionary["sk"].append(current_fact.args[i-1])
-                    print("Set {} to {}".format("sk", current_fact.args[i-1]))
+                    # print("Set {} to {}".format("sk", current_fact.args[i-1]))
                 else:
                     failure = True
             else:
@@ -591,7 +605,6 @@ def unify(facts, current_fact, rule, fact_counter, skolem_table, skolem_counter,
             history = []
             substitutions = []
             if(len(rule.if_terms) > 1):
-                print("Rule #", rule.index)
                 old_candidate_facts = copy.deepcopy(candidate_facts)
 
                 candidate_facts = [[] for i in range(len(old_candidate_facts))]
@@ -618,6 +631,7 @@ def unify(facts, current_fact, rule, fact_counter, skolem_table, skolem_counter,
 
             if(len(substitutions) == 0):
                 return
+            print("Rule #", rule.index)
             if(len(rule.if_terms) > 1):
                 if(len(substitutions) != 1):
                     substitutions.reverse()
@@ -646,6 +660,7 @@ def unify(facts, current_fact, rule, fact_counter, skolem_table, skolem_counter,
                             print("New fact #{}: {}".format(fact_counter, new_fact))
                             facts[fact_counter] = new_fact
                             facts[fact_counter].rules_from.append(rule.index)
+                            print(new_fact.derivation)
                             print("")
                             for fact in new_fact.derivation:
                                 facts[fact].rules_used.append(rule.index)
@@ -667,6 +682,7 @@ def unify(facts, current_fact, rule, fact_counter, skolem_table, skolem_counter,
                         print("New fact #{}: {}".format(fact_counter, new_fact))
                         facts[fact_counter] = new_fact
                         facts[fact_counter].rules_from.append(rule.index)
+                        print(new_fact.derivation)
                         for fact in new_fact.derivation:
                             facts[fact].rules_used.append(rule.index)
                         for element in facts[fact_counter].args:
@@ -681,7 +697,7 @@ def unify(facts, current_fact, rule, fact_counter, skolem_table, skolem_counter,
                             del skolem_table[skolem]
 
 
-def substitute(clause, dict):
+def substitute(clause, dict, new_skolems, skolem_table, skolem_counter):
     args = copy.deepcopy(clause)
     for i in range(len(args)):
         element = args[i]
@@ -691,88 +707,195 @@ def substitute(clause, dict):
             else:
                 print("Not enough information")
                 return None
+        elif(is_skolem(element)):
+            skolem_copy = copy.copy(skolem_table)
+            substitute_skolem(skolem_table, skolem_counter, element, dict, args, i)
+            if(skolem_table != skolem_copy):
+                new_skolems.append(args[i])
+            skolem_counter = len(skolem_table.items())+1
     return args
+
+def check_slots(non_empty, facts):
+    if(len(non_empty) > 0):
+        for candidate in non_empty:
+            for fact in candidate:
+                if(facts[fact[0]].truth_value):
+                    return True
+        return False
+
+def check_app(candidates, facts):
+    c_true = 0
+    c_false = 0
+    for i in range(len(candidates)):
+        found_true = False
+        candidate = candidates[i]
+        for fact in candidate:
+            if(facts[fact[0]].truth_value):
+                c_true += 1
+                found_true = True
+                break
+        if(not found_true and len(candidate) != 0):
+            c_false += 1
+    print(c_true)
+    if(c_true >= len(candidates)-1):
+        return True
+    return False
+
+def get_non_empty(candidate_facts, if_terms):
+    rule_terms = []
+    candidates = []
+    for i in range(len(candidate_facts)):
+        candidate = candidate_facts[i]
+        if(len(candidate) > 0):
+            rule_terms.append(if_terms[i])
+            candidates.append(candidate)
+    return rule_terms, candidates
+
+def get_empty(candidate_facts, if_terms):
+    rule_terms = []
+    for i in range(len(candidate_facts)):
+        candidate = candidate_facts[i]
+        if(len(candidate) == 0):
+            rule_terms.append(if_terms[i])
+    return rule_terms
+
+def get_num_true(facts, gen):
+    true = 0
+    for f in gen:
+        if(facts[f].truth_value):
+            true+=1
+    return true
+
+def strong_equality(dict1, dict2):
+    for key in dict1.keys():
+        if(key in dict2 and dict2[key] != dict1[key]):
+            return False
+    return True
+
+def check_combinations(current_fact, candidate_facts, rules, current_rule, subs, facts, non_empty, skolem_table):
+    fact_part = list(current_fact.values())[0]
+    array = []
+    print(non_empty)
+    print(fact_part)
+    print(rules)
+    dict = check_internal_subs(fact_part, rules[0], skolem_table, return_dict=True)
+    print(dict)
+    index = 0 
+    for i in range(len(current_rule)):
+        fact_found = False
+        print(current_rule[i])
+        if(current_rule[i] not in rules):
+            array.append(None)
+        else:
+            candidate = candidate_facts[index]
+            if(len(candidate) > 0):
+                for fact in candidate:
+                    substitutions = check_internal_subs(fact[1], rules[index], skolem_table, return_dict=True)
+                    if(strong_equality(dict, substitutions)):
+                        dict.update(substitutions)
+                        array.append(fact[0])
+                        fact_found = True
+            if(not fact_found):
+                array.append(None)
+            index += 1
+    subs.append((array, dict))
 
 def check_mtp(rule, facts, skolem_table, index, skolem_counter, fact_counter, current_fact):
     new_skolem = []
     candidate_facts = get_candidate_facts(rule.if_terms, current_fact, skolem_table)
-    non_empty = [i for i in range(len(candidate_facts)) if len(candidate_facts[i]) != 0]
-    if(len(non_empty) > 0):
+    non_empty = [candidate_facts[i] for i in range(len(candidate_facts)) if len(candidate_facts[i]) != 0]
+    if(check_slots(non_empty, facts)):
         print("Rule #", rule.index)
         print("Candidate facts: {}".format(candidate_facts))
         #check for contradiction
-        if(list(current_fact.values())[0].truth_value):
-            if(len(rule.if_terms) == 1):
-                raise ValueError("Contradiction")
-            if(len(rule.if_terms) == 2): #then we can immediately conclude that the other fact must be false
-                print("Then we can immediately conclude that the other fact must be false")
-                empty = [j for j in range(len(candidate_facts)) if j not in non_empty]
-                moves = check_internal_subs(list(current_fact.values())[0], rule.if_terms[non_empty[0]], skolem_table, return_dict=True)
-                print(moves)
-                args = substitute(rule.if_terms[empty[0]], moves)
-                if(args != None):
-                    print(args)
-                    new_fact = Fact(args[0], args[1:], False, derivation=[list(current_fact.keys())[0]])
-                    free_variables = sum(map(lambda x: bool(is_variable(x)), args))
-                    if(new_fact not in facts.values() and free_variables == 0):
-                        print("VALID FACT")
-                        print("New fact:", fact_counter)
-                        facts[fact_counter] = new_fact
-                        print(new_fact)
-                        print(new_fact.derivation)
-                        print("")
-                        fact_counter += 1
-                        for fact in new_fact.derivation:
-                            facts[fact].rules_used.append(rule.index)
+        if(len(rule.if_terms) == 1):
+            raise ValueError("Contradiction")
+        if(len(rule.if_terms) > 1): #then we can immediately conclude that the other fact must be false
+            old_candidate_facts = copy.deepcopy(candidate_facts)
+
+            candidate_facts = [[] for i in range(len(old_candidate_facts))]
+            extra_candidate_facts = get_candidate_facts(rule.if_terms, facts, skolem_table)
+            if(len(candidate_facts) > 1):
+                if([] in old_candidate_facts and [] not in extra_candidate_facts):
+                    #for each non empty clause in the old_candidate_facts
+                    non_empty = [i for i in range(len(old_candidate_facts)) if len(old_candidate_facts[i]) != 0]
+                    if(len(non_empty) > 1):
+                        for i in range(len(candidate_facts)):
+                            if(i == non_empty[0]):
+                                candidate_facts[i] = old_candidate_facts[i]
+                            else:
+                                candidate_facts[i] = extra_candidate_facts[i]
+                    elif(len(non_empty) == 1):
+                        candidate_facts = old_candidate_facts
+                else:
+                    candidate_facts = extra_candidate_facts
             else:
-                print("Rule #", rule.index)
-                candidate_facts = get_candidate_facts(rule.if_terms, facts, skolem_table)
-                non_empty = [i for i in range(len(candidate_facts)) if len(candidate_facts[i]) != 0]
-                if (len(non_empty) >= len(candidate_facts)-1):
-                    dict = {}
-                    history = []
-                    subs = []
-                    check_elements = [i for i in range(len(candidate_facts)) if len(candidate_facts[i]) != 0]
-                    if(len(non_empty) == len(candidate_facts) - 1):
+                candidate_facts = old_candidate_facts
+            print("Candidates: ", candidate_facts)
+            if(check_app(candidate_facts, facts)):
+                dict = {}
+                history = []
+                subs = []
+                rule_terms, candidates = get_non_empty(candidate_facts, rule.if_terms)
+                print(candidates)
+                print(rule_terms)
+                print(non_empty)
+                check_combinations(current_fact, candidates, rule_terms, rule.if_terms, subs, facts, non_empty, skolem_table)
+                print(subs)
+                if(len(subs) > 0):
+                    for sub in subs:
+                        print(sub)
+                        key = list(current_fact.keys())[0]
+                        if(key not in sub[0]):
+                            continue
 
-                        candidates = [candidate_facts[j] for j in check_elements]
-                        rule_terms = [rule.if_terms[k] for k in check_elements]
-                    else:
-                        candidates = candidate_facts
-                        rule_terms = rule.if_terms
-                    recursive_search(0, rule_terms, candidates, dict, history, subs, skolem_table)
-                    print(subs)
-                    key = list(current_fact.keys())[0]
-                    print(key)
-                    subs = [s for s in subs if key in s[0]]
-                    print(subs)
-                    if(len(subs) == 0):
-                        print("No facts found for given rule")
-                    for substitution in subs:
-                        print(substitution)
-                        for i in range(len(rule.if_terms)):
-                            if(i not in check_elements):
-                                args = substitute(rule.if_terms[i], substitution[1])
-                                if(args != None):
-                                    new_fact = Fact(args[0], args[1:], False, derivation=[list(current_fact.keys())[0]])
-                                    free_variables = sum(map(lambda x: bool(is_variable(x)), args))
-                                    if(new_fact not in facts.values() and free_variables == 0):
-                                        print("VALID FACT")
-                                        print("New fact:", fact_counter)
-                                        facts[fact_counter] = new_fact
-                                        print(new_fact)
-                                        print(new_fact.derivation)
-                                        print("")
-                                        fact_counter += 1
-                                        for fact in new_fact.derivation:
-                                            facts[fact].rules_used.append(rule.index)
+                        empty_terms = [rule.if_terms[i] for i in range(len(rule.if_terms)) if sub[0][i] == None]
+                        if(len(empty_terms) == 0):
+                            if(get_num_true(facts, sub[0]) == len(rule.if_terms)):
+                                raise ValueError("CONTRADICTION")
+                            else:
+                                return
+                        if(len(empty_terms) > 1):
+                            return
+                        arg = []
+                        for i in range(len(empty_terms)):
+                            args = substitute(empty_terms[i], sub[1], new_skolem, skolem_table, skolem_counter)
+                            if(args != None):
+                                # print("ARGS:", args)
+                                arg.append(args)
+                            else:
+                                return 
+                        args = arg[0]
+                        new_fact = Fact(args[0], args[1:], False, derivation=[list(current_fact.keys())[0]])
+                        free_variables = sum(map(lambda x: is_variable(x) == True, args))
+                        print(args)
+                        print(free_variables)
+                        if(new_fact not in facts.values() and free_variables == 0):
+                            print("VALID FACT")
+                            print("New fact:", fact_counter)
+                            facts[fact_counter] = new_fact
+                            print(new_fact)
+                            print(new_fact.derivation)
+                            print("")
+                            fact_counter += 1
+                            for fact in new_fact.derivation:
+                                facts[fact].rules_used.append(rule.index)
 
+def get_variable_count(clauses):
+    variable_count = 0
+    variables = []
+    for clause in clauses:
+        for term in clause:
+            if(is_variable(term) and term not in variables):
+                variable_count += 1
+                variables.append(term)
+    return variable_count
 def derive_falsehoods(facts, rules, fact_counter, rule_order, skolem_table, skolem_counter):
     print("Modus Tollendo Tollens")
     fact_index = len(facts.items())
     fact_count = len(facts.items())
     while(fact_index > 0):
-        print("Fact", str(fact_index) + "," + str(facts[fact_index]))
+        print("Current fact", str(fact_index) + "," + str(facts[fact_index]))
         current_fact = {fact_index: facts[fact_index]}
         for index in rule_order:
             rule = rules[index]
@@ -781,21 +904,49 @@ def derive_falsehoods(facts, rules, fact_counter, rule_order, skolem_table, skol
                 #     if index in facts[fact_index].rules_used:
                 #         print("Rule found")
                 #         continue
-                check_mtp(rule, facts, skolem_table, index, skolem_counter, fact_counter, current_fact)
-                fact_counter = len(facts.items())+1
-                if(len(facts.items()) != fact_count):
-                    print("NEW FACT")
-                    break
+                if(bool(facts[fact_index].truth_value)):
+                    check_mtp(rule, facts, skolem_table, index, skolem_counter, fact_counter, current_fact)
+                    fact_counter = len(facts.items())+1
+            else:
+                if(not bool(rule.is_then_or)):
+                    get_false = get_candidate_facts([rule.then_terms], current_fact, skolem_table)
+                    assert len(get_false) == 1
+                    false = get_false[0]
+                    if(len(false) != 0):
+                        falses = [facts[fact[0]] for fact in false if not fact[1].truth_value]
+                        if(len(falses) != 0):
+                            print("Rule #", index)
+                            print(false)
+                            then_term_variables = get_variable_count([rule.then_terms])
+                            if_term_variables = get_variable_count(rule.if_terms)
+                            if(then_term_variables == if_term_variables):
+                                moves = check_internal_subs(falses[0], rule.then_terms, skolem_table, return_dict=True)
+                                print(moves)
+                                new_skolems = []
+                                if(len(rule.if_terms) == 1):
+                                    print("SPECIAL CASE")
+                                    for clause in rule.if_terms: #every clause is a new fact
+                                        args = substitute(clause, moves, new_skolems, skolem_table, skolem_counter)
+                                        new_fact = Fact(args[0], args[1:], False, derivation=[list(current_fact.keys())[0]])
+                                        free_variables = sum(map(lambda x: is_variable(x) == True, args))
+                                        if(new_fact not in facts.values() and free_variables == 0):
+                                            print("VALID FACT")
+                                            print("New fact:", fact_counter)
+                                            facts[fact_counter] = new_fact
+                                            print(new_fact)
+                                            print(new_fact.derivation)
+                                            print("")
+                                            fact_counter += 1
+                                            for fact in new_fact.derivation:
+                                                facts[fact].rules_used.append(rule.index)
         if(len(facts.items()) > 600):
             return None
-        if(len(facts.items()) == fact_count):
-            fact_index -= 1
-        else:
-            fact_count = len(facts.items())
-            fact_index = len(facts.items())
+        fact_index -= 1
+        fact_count = len(facts.items())
 
 #error with immaterial entity facts being fired
-def forward_chaining(facts, rules, fact_counter, rule_order, skolem_counter, skolem_table, skolems_per_fact):
+def forward_chaining(facts, rules, fact_counter, rule_order, skolem_counter, skolem_table, skolems_per_fact, cutoff, arity_index):
+    print("FORWARD")
     fact_count = len(facts.items())
     fact_index = fact_counter-1
     fact_checks = {}
@@ -803,11 +954,8 @@ def forward_chaining(facts, rules, fact_counter, rule_order, skolem_counter, sko
         fact_checks[index] = False
     current_fact = {fact_counter-1: facts[fact_counter-1]}
     print(current_fact)
-    print_facts(facts)
     fact_index = fact_counter-1
-    arity_index = 1
-    cut_off = 0
-    while(fact_index > 0):
+    while(fact_index > cutoff):
         fact_count = len(facts.items())
         print("Fact #{}:{}".format(fact_index, facts[fact_index]))
         current_fact = {fact_index: facts[fact_index]}
@@ -820,26 +968,28 @@ def forward_chaining(facts, rules, fact_counter, rule_order, skolem_counter, sko
                         unify(facts, current_fact, rule, fact_counter, skolem_table, skolem_counter, skolems_per_fact, current_arity=arity_index)
                         fact_counter = len(facts.items()) + 1
                         skolem_counter = len(skolem_table.items())+1
-                        if(len(rule.if_terms) > 1 and fact_count != len(facts.items())):
-                            break
+            if(fact_count != len(facts.items()) and arity_index > 1):
+                f = len(facts.items())
+                forward_chaining(facts, rules, fact_counter, rule_order, skolem_counter, skolem_table, skolems_per_fact, fact_count, 1)
+                fact_count = len(facts.items())
+                if(f != len(facts.items())):
+                    fact_count = len(facts.items())
         if(arity_index == 1):
             fact_checks[fact_index] = True
-        if(fact_count != len(facts.items())):
+        if(fact_count != len(facts.items()) and arity_index == 1):
             for i, f in facts.items():
                 if i not in fact_checks:
                     fact_checks[i] = False
             fact_index = len(facts.items())
         else:
             fact_index -= 1
-        if(fact_index == 0 and arity_index < MAX_ARITY):
+        if(fact_index == cutoff and arity_index < MAX_ARITY):
             print("MOVE ONTO ARITY", arity_index+1)
             fact_index = len(facts.items())
             for i, f in facts.items():
                 fact_checks[i] = False
             arity_index += 1
     print("GENERATED ALL POSITIVE FACTS")
-    print_facts(facts)
-    print(skolem_table)
 
 def write_facts_to_csv(file, facts):
     f = open(file, 'w')
@@ -870,7 +1020,7 @@ def write_facts_to_csv(file, facts):
         writer.writerow(data)
 
 
-def init(input_file, rule_file="BFO2020-kowalski-with-identity-rules.txt"):
+def init(input_file, skolem_table, skolem_counter, rule_file="BFO2020-kowalski-with-identity-rules.txt"):
     sk_consts = {}
     rules = read_rules(rule_file, sk_consts)
     # print(sk_consts["134"])
@@ -883,7 +1033,8 @@ def init(input_file, rule_file="BFO2020-kowalski-with-identity-rules.txt"):
         for line in file:
             if(line[0] == "%"):
                 continue
-            fact = parse_line(line)
+            fact = parse_line(line, skolem_table, skolem_counter)
+            skolem_counter = len(skolem_table.items()) + 1
             facts[fact_counter] = fact
             fact_counter+=1
     return rules, facts, fact_counter, sk_consts
@@ -940,15 +1091,15 @@ def organize_rules(rules):
 #identical
 if __name__ =="__main__":
     input_file = "mytest-input.txt"
-    rules, start_facts, fact_counter, skolem_list = init(input_file)
+    skolem_table = {}
+    skolem_counter = 1
+    rules, start_facts, fact_counter, skolem_list = init(input_file, skolem_table, skolem_counter)
     rule_order = organize_rules(rules)
     fact_count = len(start_facts.items())
-    skolem_counter = 1
-    skolem_table = {}
     skolems_per_fact = {}
-    # derive_falsehoods(start_facts, rules, fact_counter, rule_order, skolem_list)
-    forward_chaining(start_facts, rules, fact_counter, rule_order, skolem_counter, skolem_table, skolems_per_fact)
+    forward_chaining(start_facts, rules, fact_counter, rule_order, skolem_counter, skolem_table, skolems_per_fact, 0, 1)
     skolem_counter = len(skolem_table.items()) + 1
-    # if(len(start_facts.items()) != fact_count):
-    #     derive_falsehoods(start_facts, rules, fact_counter, rule_order, skolem_table, skolem_counter)
+    if(len(start_facts.items()) != fact_count):
+        derive_falsehoods(start_facts, rules, fact_counter, rule_order, skolem_table, skolem_counter)
+    print_facts(start_facts)
     write_facts_to_csv("./output.csv", start_facts)
