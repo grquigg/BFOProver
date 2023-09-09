@@ -15,9 +15,23 @@ def display(message, type, debug):
         if(debug):
             print(message)
 
+def parse_if_terms(if_string, arity, has_skolem, skolem_list):
+    if(has_skolem):
+        raise NotImplementedError("Skolem functions")
+    inner = re.search('\[(.)*\]', if_string)
+    result = inner.group(0)
+    result = result[1:-1]
+    terms = []
+    parsed_terms = re.finditer('\[(.)*?\]', result)
+    for entry in parsed_terms:
+        string = entry.group(0)[1:-1]
+        en = string.split(',')
+        terms.append(en)
+    display(terms, "debug", DEBUG)
+    return terms
 #TO-DO: parse_rule needs to be massively overhauled considering that I know significantly more about how regexps work
 #Try to piece together what exactly the regular expression of each rule is
-#it's r(rule number, arity number, [skolem functions present in rule], kow(if([args]), then([args])))
+#it's r(rule number, arity number, [skolem functions present in rule], kow(if([[args]]), then([args])))
 def parse_rule(line, skolem_list):
     has_skolem = False
     #first search for numerical values to get the index and arity of each rule
@@ -26,8 +40,14 @@ def parse_rule(line, skolem_list):
     display(f"Rule {index} has arity {arity}", "debug", DEBUG)
 
     #next we need to determine whether or not there are any skolems in the function
-    bracket_search = list(re.finditer('\[*\]', line))
+    bracket_search = re.search('\[([0-9]+)+(,[0-9]+)*\]\),', line)
     display(bracket_search, "debug", DEBUG)
+    if(bracket_search != None):
+        has_skolem = True
+    #get the if terms
+    if_clause = re.search('if\((\[(.)*?\])\)', line)
+    display(if_clause.group(0), "debug", DEBUG)
+    if_terms = parse_if_terms(if_clause.group(0), arity, has_skolem, skolem_list)
 
 """The read_rules file opens rule_file and loads each different rule into a rule dictionary."""
 def read_rules(rule_file, skolem):
