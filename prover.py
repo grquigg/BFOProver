@@ -1,5 +1,7 @@
 import argparse
 import re
+import pyparsing
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--start", default="mytest-input.txt")
 parser.add_argument("--rulefile", default="BFO2020-kowalski-with-identity-rules.txt")
@@ -7,6 +9,7 @@ parser.add_argument("--rulefile", default="BFO2020-kowalski-with-identity-rules.
 parser.add_argument("--debug", default=False)
 args = parser.parse_args()
 DEBUG = args.debug
+SKOLEM_EXP = "(\[e,[0-9]+,\[([A-Z],)*[A-Z]\]\])"
 #custom print function to control debug statements at a high level
 def display(message, type, debug):
     if(type == "crit"):
@@ -15,18 +18,62 @@ def display(message, type, debug):
         if(debug):
             print(message)
 
+def parse_then_terms(then_string, skolem_list):
+    then_clause = re.search('\[(.)*\]', then_string)
+    res = then_clause.group(0)
+    res = res[1:-1]
+    terms = []
+    parsed = list(re.finditer('\[(.)*?\]', res))
+    if len(parsed) == 0:
+        en = res.split(',')
+        terms += en
+    else:
+        for entry in parsed:
+            string = entry.group(0)[1:-1]
+            en = string.split(',')
+            terms.append(en)
+    return terms
+
 def parse_if_terms(if_string, arity, has_skolem, skolem_list):
-    if(has_skolem):
-        raise NotImplementedError("Skolem functions")
-    inner = re.search('\[(.)*\]', if_string)
+    display("If terms", "debug", DEBUG)
+    display(if_string, "debug", DEBUG)
+    #trim off the outer-most brackets
+    inner = re.search('\[(.)+\]', if_string)
     result = inner.group(0)
     result = result[1:-1]
     terms = []
-    parsed_terms = re.finditer('\[(.)*?\]', result)
+    parsed_terms = re.split('\],', result)
+    parsed_terms[-1] = parsed_terms[-1][:-1]
+    display(parsed_terms, "debug", DEBUG)
     for entry in parsed_terms:
-        string = entry.group(0)[1:-1]
-        en = string.split(',')
+        entry = entry[1:]
+        skolem_strings = {}
+        if has_skolem:
+            element = re.finditer(SKOLEM_EXP, entry)
+            for i, el in enumerate(element):
+                display("Run skolem", "debug", DEBUG)
+                skolem_string = el.group(0)
+                display(skolem_string, "debug", DEBUG)
+                entry = entry.replace(skolem_string, f"sk{i}")
+                display(entry, "debug", DEBUG)
+                skolem_string = skolem_string[1:-1]
+                display(skolem_string, "debug", DEBUG)
+                args = re.findall("[A-Z]", skolem_string)
+                skolem_number = re.search("[0-9]+", skolem_string)
+                display(args, "debug", DEBUG)
+                number = skolem_number.group(0)
+                display(number, "debug", DEBUG)
+                skolem = ["e", number, args]
+                display(skolem, "debug", DEBUG)
+                skolem_strings[f"sk{i}"] = skolem
+        en = re.split(',', entry)
+        for i in range(len(en)):
+            element = en[i]
+            if element in skolem_strings:
+                en[i] = skolem_strings[element]
+        display(en, "debug", DEBUG)
         terms.append(en)
+    display("Terms", "debug", DEBUG)
     display(terms, "debug", DEBUG)
     return terms
 #TO-DO: parse_rule needs to be massively overhauled considering that I know significantly more about how regexps work
@@ -37,10 +84,10 @@ def parse_rule(line, skolem_list):
     #first search for numerical values to get the index and arity of each rule
     se = list(re.finditer('[0-9]+', line))
     index, arity = int(se[0].group(0)), int(se[1].group(0))
-    display(f"Rule {index} has arity {arity}", "debug", DEBUG)
+    display(f"Rule {index} has arity {arity}", "crit", DEBUG)
 
     #next we need to determine whether or not there are any skolems in the function
-    bracket_search = re.search('\[([0-9]+)+(,[0-9]+)*\]\),', line)
+    bracket_search = re.search('\[([0-9]+)+(,[0-9]+)*\]', line)
     display(bracket_search, "debug", DEBUG)
     if(bracket_search != None):
         has_skolem = True
@@ -48,6 +95,14 @@ def parse_rule(line, skolem_list):
     if_clause = re.search('if\((\[(.)*?\])\)', line)
     display(if_clause.group(0), "debug", DEBUG)
     if_terms = parse_if_terms(if_clause.group(0), arity, has_skolem, skolem_list)
+    display(if_terms, "crit", DEBUG)
+    then_clause = re.search('(then|then_or)\(\[(.)*?\]\)', line)
+    if then_clause == None:
+        then_terms = ["False"]
+    else:
+        display(then_clause.group(0), "debug", DEBUG)
+        then_terms = parse_then_terms(then_clause.group(0), skolem_list)
+    display(then_terms, "crit", DEBUG)
 
 """The read_rules file opens rule_file and loads each different rule into a rule dictionary."""
 def read_rules(rule_file, skolem):
@@ -59,7 +114,6 @@ def read_rules(rule_file, skolem):
                 rule = parse_rule(line, skolem)
                 rule_list[rule_count] = rule
                 rule_count += 1
-                raise NotImplementedError("Stop")
     return rule_list
 
 """the init() function performs all of the required setup needed to parse all of the 
