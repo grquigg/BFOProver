@@ -1,7 +1,7 @@
 import argparse
 import re
 import pyparsing
-
+from rule import Rule
 parser = argparse.ArgumentParser()
 parser.add_argument("--start", default="mytest-input.txt")
 parser.add_argument("--rulefile", default="BFO2020-kowalski-with-identity-rules.txt")
@@ -73,8 +73,8 @@ def parse_if_terms(if_string, arity, has_skolem, skolem_list):
                 en[i] = skolem_strings[element]
         display(en, "debug", DEBUG)
         terms.append(en)
-    display("Terms", "debug", DEBUG)
-    display(terms, "debug", DEBUG)
+    # display("Terms", "crit", DEBUG)
+    # display(terms, "crit", DEBUG)
     return terms
 #TO-DO: parse_rule needs to be massively overhauled considering that I know significantly more about how regexps work
 #Try to piece together what exactly the regular expression of each rule is
@@ -93,8 +93,11 @@ def parse_rule(line, skolem_list):
         has_skolem = True
     #get the if terms
     if_clause = re.search('if\((\[(.)*?\])\)', line)
-    display(if_clause.group(0), "debug", DEBUG)
-    if_terms = parse_if_terms(if_clause.group(0), arity, has_skolem, skolem_list)
+    if(if_clause == None):
+        if_terms = ["True"]
+    else:
+        display(if_clause.group(0), "debug", DEBUG)
+        if_terms = parse_if_terms(if_clause.group(0), arity, has_skolem, skolem_list)
     display(if_terms, "crit", DEBUG)
     then_clause = re.search('(then|then_or)\(\[(.)*?\]\)', line)
     if then_clause == None:
@@ -103,6 +106,8 @@ def parse_rule(line, skolem_list):
         display(then_clause.group(0), "debug", DEBUG)
         then_terms = parse_then_terms(then_clause.group(0), skolem_list)
     display(then_terms, "crit", DEBUG)
+    new_rule = Rule(index, if_terms, then_terms, has_skolem, bracket_search)
+    return new_rule
 
 """The read_rules file opens rule_file and loads each different rule into a rule dictionary."""
 def read_rules(rule_file, skolem):
@@ -116,6 +121,8 @@ def read_rules(rule_file, skolem):
                 rule_count += 1
     return rule_list
 
+def parse_line(line, skolem_table, skolem_counter):
+    pass
 """the init() function performs all of the required setup needed to parse all of the 
 information provided in both the input_file and the rule_file in order to perform 
 inference"""
