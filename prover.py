@@ -1,7 +1,8 @@
 import argparse
 import re
-import pyparsing
 from rule import Rule
+from fact import Fact
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--start", default="mytest-input.txt")
 parser.add_argument("--rulefile", default="BFO2020-kowalski-with-identity-rules.txt")
@@ -112,17 +113,24 @@ def parse_rule(line, skolem_list):
 """The read_rules file opens rule_file and loads each different rule into a rule dictionary."""
 def read_rules(rule_file, skolem):
     rule_list = {}
-    rule_count = 1
     with open(rule_file, "r") as rules:
-        for line in rules:
+        for i, line in enumerate(rules):
             if(line[0] == "r"):
                 rule = parse_rule(line, skolem)
-                rule_list[rule_count] = rule
-                rule_count += 1
+                rule_list[i] = rule
     return rule_list
 
-def parse_line(line, skolem_table, skolem_counter):
-    pass
+def read_fact(line, skolem_table, skolem_counter):
+    #look for stuff within two square brackets
+    format = re.search('\[(.)+\]', line)
+    content = format.group(0)
+    content = content[1:-1]
+    #assuming that user doesn't pass in skolem functions for now
+    terms = content.split(",")
+    fact = Fact(terms[0], terms[1:], True)
+    fact.rules_from.append(0)
+    return fact
+
 """the init() function performs all of the required setup needed to parse all of the 
 information provided in both the input_file and the rule_file in order to perform 
 inference"""
@@ -130,16 +138,23 @@ def init(input_file, rule_file, skolem_table, skolem_counter):
     sk_consts = {}
     rules = read_rules(rule_file, sk_consts)
     facts = {}
-    fact_counter = 1
     with open(input_file, "r") as file:
-        for line in file:
+        for i, line in enumerate(file):
             if(line[0] == "%"):
                 continue
-            fact = parse_line(line, skolem_table, skolem_counter)
-            skolem_counter = len(skolem_table.items()) + 1
-            facts[fact_counter] = fact
-            fact_counter+=1
+            fact = read_fact(line, skolem_table, skolem_counter)
+            print(fact)
+            facts[i] = fact
+    print(facts)
+    fact_counter = len(facts.items()) + 1
     return rules, facts, fact_counter, sk_consts
+
+def modus_ponens(rules, facts, fact_counter, skolem_list):
+    pass
+
+def run_inference(rules, facts, fact_counter, skolem_list):
+    #forward chaining of positive rules using modus_ponens
+    modus_ponens(rules, facts, fact_counter, skolem_list)
 
 if __name__ == "__main__":
     args = parser.parse_args()
@@ -159,3 +174,4 @@ if __name__ == "__main__":
     input_file = args.start
     rule_file = args.rulefile
     rules, start_facts, fact_counter, skolem_list = init(input_file, rule_file, skolem_table, skolem_counter)
+    run_inference(rules, start_facts, fact_counter, skolem_list)
