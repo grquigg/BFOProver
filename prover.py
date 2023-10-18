@@ -149,12 +149,53 @@ def init(input_file, rule_file, skolem_table, skolem_counter):
     fact_counter = len(facts.items()) + 1
     return rules, facts, fact_counter, sk_consts
 
-def modus_ponens(rules, facts, fact_counter, skolem_list):
+#given a list of candidate clauses and their consistency, determine whether or not there is a match in any of the clauses
+def get_candidate_facts(clauses, current_facts, skolem_table):
+    candidate_facts = []
+    for clause in clauses:
+        valid = []
+        for fact in current_facts:
+            print(fact)
+
+#this is the function that arguably needs the biggest overhaul
+#thankfully, immutable dicts are our friends in this instance
+def unify(facts, current_fact, rule, fact_counter, skolem_table, skolem_counter, skolems_per_fact, current_arity=0):
+    fact_count = len(facts.items())
+    new_skolem = []
+    multiple_candidates = False
+    candidate_facts = get_candidate_facts(rule.if_terms, [current_fact], skolem_table)
     pass
 
-def run_inference(rules, facts, fact_counter, skolem_list):
+#cutoff is the last rule we should read from the current iteration of this code
+#I use a memoization approach to ensure that we're not trying to match strings that we've already gone
+#through previously
+#there are several optimization tricks we can use to speed up the search for matches
+#the first is that we sort the rules by arity
+def modus_ponens(rules, facts, fact_counter, skolem_list, cutoff, arity_index):
+    print("Running modus ponens")
+    #memoization
+    fact_memo = set()
+    current_fact = fact_counter - 1
+    while(current_fact > cutoff):
+        display(f"Current fact: {current_fact}", "debug", DEBUG)
+        #current_fact being in the set means that we've already discovered all there is to 
+        #know about the existing fact
+        if current_fact not in fact_memo:
+            #run inference on the current fact
+            for _, rule in rules:
+                if(rule.is_then_or or rule.then_terms == ['False']):
+                    continue
+                if(len(rule.if_terms) <= arity_index):
+                    unify(facts, current_fact, rule, fact_counter, skolem_table, skolem_counter, skolems_per_fact, current_arity=arity_index)
+
+            # add the current_fact to the set
+            fact_memo.add(current_fact)
+            current_fact -= 1
+
+def run_inference(rules, facts, fact_counter, skolem_list, skolems_per_fact):
     #forward chaining of positive rules using modus_ponens
-    modus_ponens(rules, facts, fact_counter, skolem_list)
+    print("Running inference")
+    modus_ponens(rules, facts, fact_counter, skolem_list, 0, 1)
 
 if __name__ == "__main__":
     args = parser.parse_args()
@@ -168,10 +209,12 @@ if __name__ == "__main__":
 
     #we start out by having skolem_table be an empty list
     skolem_table = {}
-
+    skolems_per_fact = {}
     #and skolem counter being set to 1
     skolem_counter = 1
     input_file = args.start
     rule_file = args.rulefile
     rules, start_facts, fact_counter, skolem_list = init(input_file, rule_file, skolem_table, skolem_counter)
-    run_inference(rules, start_facts, fact_counter, skolem_list)
+    print(fact_counter)
+    rules = sorted(rules.items(), key=lambda x: x[1].arity)
+    run_inference(rules, start_facts, fact_counter, skolem_list, skolems_per_fact)
