@@ -1,3 +1,5 @@
+import utils
+from utils import display
 class Rule(): # a rule has a list of terms
     def __init__(self, index, if_terms, then_terms, has_skolem, skolems):
         self.if_terms = if_terms
@@ -25,14 +27,14 @@ class Rule(): # a rule has a list of terms
         return "if({}), then({})".format(self.if_terms, self.then_terms)
     
     #here's where a bit more can be leveraged in terms of the way that formatting strings work
-    def match(self, fact_terms):
-    
+    def match(self, fact_terms, clause_num):
+        clause = self.if_terms[clause_num]
         # Check if lengths are equal
-        if len(fact_terms) != len(self.if_terms):
+        if len(fact_terms) != len(clause):
             return False, {}
-    
+        display("Length of terms equal", "debug", utils.DEBUG)
         var_mapping = {}
-        for p, i in zip(self.if_terms, fact_terms):
+        for p, i in zip(clause, fact_terms):
             # Check if it's a variable in the pattern
             if p.isupper() and len(p) == 1:
                 var_mapping[p] = i
