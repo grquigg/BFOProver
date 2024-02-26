@@ -30,6 +30,8 @@ class Rule(): # a rule has a list of terms
     def match(self, fact_terms, clause_num):
         clause = self.if_terms[clause_num]
         # Check if lengths are equal
+        display(f"Length of fact terms: {len(fact_terms)}", "debug", utils.DEBUG)
+        display(f"Length of clause: {len(clause)}", "debug", utils.DEBUG)
         if len(fact_terms) != len(clause):
             return False, {}
         display("Length of terms equal", "debug", utils.DEBUG)

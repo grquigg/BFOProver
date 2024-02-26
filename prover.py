@@ -13,14 +13,15 @@ utils.DEBUG = args.debug
 #custom print function to control debug statements at a high level
 
 #given a list of candidate clauses and their consistency, determine whether or not there is a match in any of the clauses
-def get_candidate_facts(rule, current_facts, facts, skolem_table):
+#ideally the algorithm jumps straight into determining whether the substitution is actually valid from this line
+def get_candidate_facts(rule, current_facts, facts, skolem_table, return_valid=False):
     clauses = rule.if_terms
     candidate_facts = []
     mappings = []
     for i, clause in enumerate(clauses):
         valid = []
         for fact in current_facts:
-            match, mapping = rule.match(facts[fact].args, i)
+            match, mapping = rule.match([facts[fact].name] + facts[fact].args, i)
             if match:
                 valid.append((fact, mapping))
         candidate_facts.append(valid)
@@ -33,12 +34,13 @@ def unify(facts, current_fact, rule, fact_counter, skolem_table, skolem_counter,
     fact_count = len(facts.items())
     new_skolem = []
     multiple_candidates = False
-    candidate_facts = get_candidate_facts(rule, [current_fact], facts, skolem_table)
+    candidate_facts = get_candidate_facts(rule, [current_fact], facts, skolem_table, return_valid=True)
     empty = [len(candidate) for candidate in candidate_facts]
     max_cans = max(empty)
     if max_cans > 0:
         display(f"Rule: {rule}", "crit", utils.DEBUG)
         display(candidate_facts, "crit", utils.DEBUG)
+        raise NotImplementedError()
     pass
 
 #cutoff is the last rule we should read from the current iteration of this code
