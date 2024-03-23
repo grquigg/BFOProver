@@ -1,7 +1,10 @@
 import utils
 from utils import display
-class Rule(): # a rule has a list of terms
+from node import Node
+
+class RuleNode(Node): # a rule has a list of terms
     def __init__(self, index, if_terms, then_terms, has_skolem, skolems):
+        super().__init__(index, "Rule", None, None)
         self.if_terms = if_terms
         self.then_terms = then_terms
         self.index = int(index)
@@ -14,6 +17,8 @@ class Rule(): # a rule has a list of terms
             self.antecedents = len(self.then_terms)
         else:
             self.antecedents = 1
+        self.values = [term[0] for term in self.if_terms]
+        self.args = [term[1:] for term in self.if_terms]
 
     def is_then_or(self):
         #if each term in the list of then_terms of a rule is itself a list, then it's a then-or

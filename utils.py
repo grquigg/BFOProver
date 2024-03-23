@@ -12,7 +12,7 @@ def display(message, type, debug):
 information provided in both the input_file and the rule_file in order to perform 
 inference"""
 def init(input_file, rule_file, skolem_table, skolem_counter):
-    from parser import read_rules, read_fact
+    from parse_input import read_rules, read_fact
     sk_consts = {}
     rules = read_rules(rule_file, sk_consts)
     facts = {}
