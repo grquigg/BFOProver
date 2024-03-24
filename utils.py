@@ -1,3 +1,4 @@
+import re
 DEBUG = False
 SKOLEM_EXP = "(\[e,[0-9]+,\[([A-Z],)*[A-Z]\]\])"
 
@@ -26,3 +27,9 @@ def init(input_file, rule_file, skolem_table, skolem_counter):
     print(facts)
     fact_counter = len(facts.items()) + 1
     return rules, facts, fact_counter, sk_consts
+
+def is_skolem(expr):
+    search = re.search('\[e,[0-9]+,\[(?:\w,?)+\]\]', expr)
+    if search != None:
+        return True
+    return False
