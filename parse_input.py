@@ -4,79 +4,53 @@ from utils import display, is_skolem
 from node import FactNode
 from rule import RuleNode
 
-def parse_then_terms(then_string, skolem_list):
-    then_clause = re.search('\[(.)*\]', then_string)
-    res = then_clause.group(0)
-    res = res[1:-1]
-    terms = []
-    parsed = list(re.finditer('\[(.)*?\]', res))
-    if len(parsed) == 0:
-        en = res.split(',')
-        terms += en
-    else:
-        for entry in parsed:
-            string = entry.group(0)[1:-1]
-            en = string.split(',')
-            terms.append(en)
-    return terms
-
-def parse_if_terms(if_string: str, arity: int, has_skolem: bool, skolem_list: dict) -> list:
+def parse_terms(if_string: str) -> list:
     clauses = []
     results = list(re.finditer('\[((((?:\w-?)+)|(\[e,[0-9]+,\[(?:\w,?)+\]\])),?)+\]', if_string))
     for result in results:
-        print(result.group(0))
         terms = list(re.finditer('(\w-?)+|(\[e,[0-9]+,\[(?:\w,?)+\]\])', result.group(0)))
         processed = []
         for term in terms:
-            print(term.group(0))
             if not(is_skolem(term.group(0))):
                 processed.append(term.group(0))
             else:
                 t = term.group(0)[1:-1]
-                print(t)
                 vars = list(re.finditer('(e),([0-9]+),(\[(?:[A-Z],?)+\])', t))
-                
-    return terms
+                skolem_vals = [vars[0].group(1), int(vars[0].group(2))]
+                skolem_vars = vars[0].group(3)[1:-1].split(',')
+                skolem_vals.append(skolem_vars)
+                processed.append(skolem_vals)
+        clauses.append(processed)
+    return clauses
 # #TO-DO: parse_rule needs to be massively overhauled considering that I know significantly more about how regexps work
 # #Try to piece together what exactly the regular expression of each rule is
 # #it's r(rule number, arity number, [skolem functions present in rule], kow(if([[args]]), then([args])))
-def parse_rule(line: str, skolem_list: dict):
+def parse_rule(line: str):
     expression_parse = re.search('r\(([0-9]+),([0-9]+),(\[([0-9]*,?)*\])', line)
     if_clause = re.search('if\(\[(\[(.)*\])\]\),', line)
-    print(f"\nLength of expression: {len(expression_parse.groups())}")
-    print(f"This is the expression: {expression_parse.group(0)}")
-    print(f"Rule #{expression_parse.group(1)}")
-    rule_index = expression_parse.group(1)
-    print(f"Arity: {expression_parse.group(2)}")
-    arity = expression_parse.group(2)
-    print(f"Skolems: {expression_parse.group(3)}")
+    rule_index = int(expression_parse.group(1))
+    arity = int(expression_parse.group(2))
     skolems = expression_parse.group(3)
-    print(f"Clauses in if-term: {if_clause.group(1)}")
-    then_clause = re.search('then\((\[(.)*\])\)', line)
-    # print(f"Clauses in then term: {then_clause.group(1)}")
-    if_terms = parse_if_terms(if_clause.group(1), int(arity), False, skolem_list)
-    # #next we need to determine whether or not there are any skolems in the function
-    # bracket_search = re.search('\[([0-9]+)+(,[0-9]+)*\]', line)
-    # # display(bracket_search, "debug", utils.DEBUG)
-    # if(bracket_search != None):
-    #     has_skolem = True
-    # #get the if terms
-    # if_clause = re.search('if\((\[(.)*?\])\)', line)
-    # if(if_clause == None):
-    #     if_terms = ["True"]
-    # else:
-    #     # display(if_clause.group(0), "debug", utils.DEBUG)
-    #     if_terms = parse_if_terms(if_clause.group(0), arity, has_skolem, skolem_list)
-    # # display(if_terms, "crit", utils.DEBUG)
-    # then_clause = re.search('(then|then_or)\(\[(.)*?\]\)', line)
-    # if then_clause == None:
-    #     then_terms = ["False"]
-    # else:
-    #     # display(then_clause.group(0), "debug", utils.DEBUG)
-    #     then_terms = parse_then_terms(then_clause.group(0), skolem_list)
-    # # display(then_terms, "crit", utils.DEBUG)
-    # new_rule = RuleNode(index, if_terms, then_terms, has_skolem, bracket_search)
-    # return new_rule
+    #deal with if terms
+    if_terms = parse_terms(if_clause.group(1))
+
+    #deal with then terms
+    then_clause = re.search('then\((\[(.)*\])\)|false|then_or\((\[(.)*\])\)', line)
+    then_terms = []
+    if(then_clause.group(0)=="false"):
+        then_terms = ["false"]
+    else:
+        then_terms = parse_terms(then_clause.group(0))
+    #deal with skolems
+    has_skolems = False
+    skolem_list = None
+    if skolems != "[]":
+        skolem_list = skolems[1:-1].split(',')
+        for i in range(len(skolem_list)):
+            skolem_list[i] = int(skolem_list[i])
+        has_skolems = True
+    new_rule = RuleNode(rule_index, if_terms, then_terms, has_skolems, skolem_list)
+    return new_rule
 
 """The read_rules file opens rule_file and loads each different rule into a rule dictionary."""
 # def read_rules(rule_file, skolem):

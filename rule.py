@@ -22,8 +22,7 @@ class RuleNode(Node): # a rule has a list of terms
 
     def is_then_or(self):
         #if each term in the list of then_terms of a rule is itself a list, then it's a then-or
-        lists = [i for i in range(len(self.then_terms)) if isinstance(self.then_terms[i], list)]
-        if(len(lists) == len(self.then_terms)):
+        if(len(self.then_terms) > 1):
             self.is_then_or = True
         else:
             self.is_then_or = False
