@@ -1,7 +1,6 @@
 import unittest
 import sys
 sys.path.append('../')
-import parse_input
 from parse_input import read_fact, parse_rule
 
 class InputMethods(unittest.TestCase):
@@ -126,6 +125,9 @@ class InputMethods(unittest.TestCase):
         self.assertEqual(len(skolem_list.items()), 2)
         self.assertEqual(skolem_list["sk1"], ["e", "19", ["my-thinking", "t"]])
         self.assertEqual(skolem_list["sk2"], ["e", "20", ["an-object", "open-season", "timeout"]])
+
+    def test_truth_values(self):
+        pass
 
 
 if __name__ == '__main__':

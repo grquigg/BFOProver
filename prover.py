@@ -1,8 +1,8 @@
 import argparse
-from rule import Rule
+from rule import RuleNode
 from fact import Fact
 import utils
-from utils import init, display
+from utils import display
 parser = argparse.ArgumentParser()
 parser.add_argument("--start", default="mytest-input.txt")
 parser.add_argument("--rulefile", default="BFO2020-kowalski-with-identity-rules.txt")
@@ -11,6 +11,29 @@ parser.add_argument("--debug", default=False)
 args = parser.parse_args()
 utils.DEBUG = args.debug
 #custom print function to control debug statements at a high level
+
+
+def linkStep(facts: list[Fact], rules: list[RuleNode], rules_dict: dict[int], valid_facts: list[(Fact, dict)]):
+    for i, fact in enumerate(facts):
+        print(f"{i}\t{fact}")
+        for rule in rules_dict[fact.value]:
+            print(rules[rule].index)
+            #create an empty dict
+            assert(len(rules[rule].args[0]) == len(fact.args))
+            values = {}
+            valid_fact = True
+            for i in range(len(fact.args)):
+                if rules[rule].args[0][i] in values:
+                    if values[rules[rule].args[0][i]] != fact.args[i]:
+                        valid_fact = False
+                        break
+                else:
+                    values[rules[rule].args[0][i]] = fact.args[i]
+            if valid_fact:
+                fact.neighbors[tuple(fact.args)] = rules[rule]
+                valid_facts.append((fact, values))
+    return valid_facts
+        
 
 #given a list of candidate clauses and their consistency, determine whether or not there is a match in any of the clauses
 #ideally the algorithm jumps straight into determining whether the substitution is actually valid from this line
