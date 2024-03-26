@@ -48,5 +48,8 @@ class RuleNode(Node): # a rule has a list of terms
                 return False, {}
     
         return True, var_mapping
+    
+    def __eq__(self, other):
+        return self.if_terms == other.if_terms and self.then_terms == other.then_terms
 
 

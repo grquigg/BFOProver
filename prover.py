@@ -37,8 +37,12 @@ def linkStep(facts: list[Fact], rules: list[RuleNode], rules_dict: dict[int], va
                     else:
                         values[rules[rule[0]].args[rule[1]][i]] = fact.args[i]
             if valid_fact:
-                fact.neighbors[tuple(fact.args)] = rules[rule[0]]
-                valid_facts.append((fact, values))
+                fact_args = tuple(fact.args)
+                if(fact_args not in fact.neighbors):
+                     fact.neighbors[fact_args] = []
+                if(rules[rule[0]] not in fact.neighbors[fact_args]):
+                    fact.neighbors[fact_args].append(rules[rule[0]])
+                valid_facts.append((fact, values, rules[rule[0]].index))
     return valid_facts
         
 

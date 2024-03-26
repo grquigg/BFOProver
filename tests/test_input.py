@@ -1,7 +1,7 @@
 import unittest
 import sys
 sys.path.append('../')
-from parse_input import read_fact, parse_rule
+from parse_input import read_fact, parse_rule, read_rules
 
 class InputMethods(unittest.TestCase):
     
@@ -133,8 +133,12 @@ class InputMethods(unittest.TestCase):
         self.assertEqual(skolem_list["sk1"], ["e", "19", ["my-thinking", "t"]])
         self.assertEqual(skolem_list["sk2"], ["e", "20", ["an-object", "open-season", "timeout"]])
 
-    def test_truth_values(self):
-        pass
+    def test_dont_duplicate_identical_rules(self):
+        rule_input = ["r(54,1,[6,7],kow(if([[universal,A]]),then([instance-of,[e,6,[A]],A,[e,7,[A]]]))).",
+                      "r(54,1,[6,7],kow(if([[universal,A]]),then([instance-of,[e,6,[A]],A,[e,7,[A]]]))).",
+                      "r(100,1,[6,7],kow(if([[universal,A]]),then([instance-of,[e,6,[A]],A,[e,7,[A]]])))."]
+        rules = read_rules(rule_input)
+        self.assertEqual(len(rules), 1)
 
 
 if __name__ == '__main__':

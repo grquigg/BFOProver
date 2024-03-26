@@ -10,3 +10,6 @@ class FactNode(Node):
         super().__init__(index, "Fact", [value], args)
         self.value = value
         self.rules_from = []
+        self.is_true = True
+
+    

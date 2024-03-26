@@ -4,6 +4,14 @@ from utils import display, is_skolem
 from node import FactNode
 from rule import RuleNode
 
+def read_rules(rules: list[str]) -> list[RuleNode]:
+    parsed_rules = []
+    for rule in rules:
+        parsed = parse_rule(rule)
+        if parsed not in parsed_rules:
+            parsed_rules.append(parsed)
+    return parsed_rules
+
 def parse_terms(if_string: str) -> list:
     clauses = []
     results = list(re.finditer('\[((((?:\w-?)+)|(\[e,[0-9]+,\[(?:\w,?)+\]\])),?)+\]', if_string))
