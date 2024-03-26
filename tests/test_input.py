@@ -114,6 +114,13 @@ class InputMethods(unittest.TestCase):
         self.assertEqual(len(skolem_list.items()), 1)
         self.assertEqual(skolem_list["sk1"], ["e", "19", ["my-thinking", "t"]])
 
+    def test_other_fact_with_skolem(self):
+        skolem_list = {}
+        skolem_counter = 1
+        fact_input = ["t([occupies-spatiotemporal-region,my-thinking,[e,100,[my-thinking]]])."]
+        fact = read_fact(0, fact_input[0], skolems=True, skolem_list=skolem_list, skolem_count=skolem_counter)
+        self.assertEqual(fact.args, ["my-thinking", "sk1"])
+
     def test_single_fact_with_multiple_skolems(self):
         skolem_list = {}
         skolem_counter = 1

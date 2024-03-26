@@ -66,14 +66,14 @@ def read_fact(index, line, skolems=False, skolem_list=None, skolem_count=0):
     #look for stuff within two square brackets
     format = re.search('\[(.)+\]', line)
     content = format.group(0)
-    print("\n" + content)
     content = content[1:-1]
-    print(f"Content after {content}")
+    # print(f"Content after {content}")
     #we're obviously going to have to deal with nested skolems as well
     if(skolems):
         if(not skolem_count or skolem_count == 0):
             raise ValueError("Cannot set skolems to True and not provide any arguments!")
-        format = re.findall('(\[e,[0-9]+,\[(((\w)+-)*(\w)+,)+((\w)+-)*(\w)+\]\])', content)
+        # format = re.findall('(\[e,[0-9]+,\[(((\w)+-?)+,)+((\w)+-)*(\w)+\]\])', content)
+        format = re.findall('(\[e,[0-9]+,\[(((\w)+-?)+,?)+\]\])', content)
         for i in range(len(format)):
             skolem = format[i][0]
             args = []

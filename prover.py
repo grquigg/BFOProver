@@ -3,6 +3,7 @@ from rule import RuleNode
 from fact import Fact
 import utils
 from utils import display
+import re
 parser = argparse.ArgumentParser()
 parser.add_argument("--start", default="mytest-input.txt")
 parser.add_argument("--rulefile", default="BFO2020-kowalski-with-identity-rules.txt")
@@ -17,20 +18,26 @@ def linkStep(facts: list[Fact], rules: list[RuleNode], rules_dict: dict[int], va
     for i, fact in enumerate(facts):
         print(f"{i}\t{fact}")
         for rule in rules_dict[fact.value]:
-            print(rules[rule].index)
+            print(rules[rule[0]].index)
             #create an empty dict
-            assert(len(rules[rule].args[0]) == len(fact.args))
+            assert(len(rules[rule[0]].args[rule[1]]) == len(fact.args))
             values = {}
             valid_fact = True
             for i in range(len(fact.args)):
-                if rules[rule].args[0][i] in values:
-                    if values[rules[rule].args[0][i]] != fact.args[i]:
+                is_var = re.search('[A-Z]', rules[rule[0]].args[rule[1]][i])
+                if not is_var: #assure all non vars is equal
+                    if(rules[rule[0]].args[rule[1]][i] != fact.args[i]):
                         valid_fact = False
                         break
                 else:
-                    values[rules[rule].args[0][i]] = fact.args[i]
+                    if rules[rule[0]].args[rule[1]][i] in values:
+                        if values[rules[rule[0]].args[rule[1]][i]] != fact.args[i]:
+                            valid_fact = False
+                            break
+                    else:
+                        values[rules[rule[0]].args[rule[1]][i]] = fact.args[i]
             if valid_fact:
-                fact.neighbors[tuple(fact.args)] = rules[rule]
+                fact.neighbors[tuple(fact.args)] = rules[rule[0]]
                 valid_facts.append((fact, values))
     return valid_facts
         
