@@ -1,6 +1,6 @@
 import argparse
 from rule import RuleNode
-from fact import Fact
+from node import FactNode
 import utils
 from utils import display
 import re
@@ -13,13 +13,28 @@ args = parser.parse_args()
 utils.DEBUG = args.debug
 #custom print function to control debug statements at a high level
 
+def modusPonens(valid_facts: list[(FactNode, dict, int)], facts: list[FactNode], rules: list[RuleNode]):
+    fact_counter = len(facts)
+    for fact, sub, rule_index in valid_facts:
+        args = rules[rule_index].then_terms[0][1:]
+        fact = FactNode(fact_counter, rules[rule_index].then_terms[0][0], [])
+        for i in range(len(args)):
+            if args[i] in sub:
+                args[i] = sub[args[i]]
+        fact.args = args
+        #unfortunately we have to go through all of this logic regardless of whether the fact was already generated or not, which can be cumbersome
+        if fact not in facts:
+            facts.append(fact)
+        fact_counter += 1
+    return facts
 
-def linkStep(facts: list[Fact], rules: list[RuleNode], rules_dict: dict[int], valid_facts: list[(Fact, dict)]):
+def linkStep(facts: list[FactNode], rules: list[RuleNode], rules_dict: dict[tuple[int,int]], valid_facts: list[(FactNode, dict, int)]):
     for i, fact in enumerate(facts):
-        print(f"{i}\t{fact}")
         for rule in rules_dict[fact.value]:
-            print(rules[rule[0]].index)
             #create an empty dict
+            print(rules[rule[0]])
+            print(fact)
+            assert(type(rules[rule[0]]) == RuleNode)
             assert(len(rules[rule[0]].args[rule[1]]) == len(fact.args))
             values = {}
             valid_fact = True
@@ -43,6 +58,7 @@ def linkStep(facts: list[Fact], rules: list[RuleNode], rules_dict: dict[int], va
                 if(rules[rule[0]] not in fact.neighbors[fact_args]):
                     fact.neighbors[fact_args].append(rules[rule[0]])
                 valid_facts.append((fact, values, rules[rule[0]].index))
+        fact.linked = True
     return valid_facts
         
 
@@ -82,31 +98,11 @@ def unify(facts, current_fact, rule, fact_counter, skolem_table, skolem_counter,
 #through previously
 #there are several optimization tricks we can use to speed up the search for matches
 #the first is that we sort the rules by arity
-def modus_ponens(rules, facts, fact_counter, skolem_list, cutoff, arity_index):
-    print("Running modus ponens")
-    #memoization
-    fact_memo = set()
-    current_fact = fact_counter - 1
-    while(current_fact > cutoff):
-        display(f"Current fact: {current_fact}", "debug", utils.DEBUG)
-        #current_fact being in the set means that we've already discovered all there is to 
-        #know about the existing fact
-        if current_fact not in fact_memo:
-            #run inference on the current fact
-            for _, rule in rules:
-                if(rule.is_then_or or rule.then_terms == ['False']):
-                    continue
-                if(len(rule.if_terms) <= arity_index):
-                    unify(facts, current_fact, rule, fact_counter, skolem_table, skolem_counter, skolems_per_fact, current_arity=arity_index)
-
-            # add the current_fact to the set
-            fact_memo.add(current_fact)
-            current_fact -= 1
 
 def run_inference(rules, facts, fact_counter, skolem_list, skolems_per_fact):
     #forward chaining of positive rules using modus_ponens
     print("Running inference")
-    modus_ponens(rules, facts, fact_counter, skolem_list, 0, 1)
+    # modus_ponens(rules, facts, fact_counter, skolem_list, 0, 1)
 
 if __name__ == "__main__":
     args = parser.parse_args()
@@ -125,7 +121,7 @@ if __name__ == "__main__":
     skolem_counter = 1
     input_file = args.start
     rule_file = args.rulefile
-    rules, start_facts, fact_counter, skolem_list = init(input_file, rule_file, skolem_table, skolem_counter)
-    print(fact_counter)
-    rules = sorted(rules.items(), key=lambda x: x[1].arity)
-    run_inference(rules, start_facts, fact_counter, skolem_list, skolems_per_fact)
+    # rules, start_facts, fact_counter, skolem_list = init(input_file, rule_file, skolem_table, skolem_counter)
+    # print(fact_counter)
+    # rules = sorted(rules.items(), key=lambda x: x[1].arity)
+    # run_inference(rules, start_facts, fact_counter, skolem_list, skolems_per_fact)

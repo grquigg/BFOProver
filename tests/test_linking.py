@@ -26,12 +26,12 @@ class LinkingMethods(unittest.TestCase):
         fact_input = ["t([instance-of,my-thinking,process,t])."]
         rule_input = ["r(172,1,[45],kow(if([[instance-of,B,process,A]]),then([occurrent-part-of,[e,45,[B]],B])))."]
         fact = read_fact(0, fact_input[0], False)
-        rule = parse_rule(rule_input[0])
-        self.assertEqual(fact.value, rule.values[0])
-        rule_dict = {"instance-of": [(0,0)]}
+        rule = {172: parse_rule(rule_input[0])}
+        self.assertEqual(fact.value, rule[172].values[0])
+        rule_dict = {"instance-of": [(172,0)]}
         valid_facts = []
-        valid_facts = linkStep([fact], [rule], rule_dict, valid_facts)
-        self.assertEqual(fact.neighbors, {("my-thinking", "process", "t"): [rule]})
+        valid_facts = linkStep([fact], rule, rule_dict, valid_facts)
+        self.assertEqual(fact.neighbors, {("my-thinking", "process", "t"): [rule[172]]})
         self.assertEqual(valid_facts, [(fact, {"A": "t", "B": "my-thinking"}, 172)])
     """
     tests whether or not a link is created when a fact interacts with a rule where non variables elements in the
@@ -107,11 +107,10 @@ class LinkingMethods(unittest.TestCase):
         rule_input = ["r(108,2,[],kow(if([[history-of,C,B],[instance-of,C,history,A]]),then([instance-of,B,material-entity,A]))).",
                       "r(109,2,[],kow(if([[history-of,C,B],[instance-of,C,history,A]]),then([instance-of,B,material-entity,A])))."]
         facts = [read_fact(i, fact_input[i]) for i in range(len(fact_input))]
-        rules = read_rules(rule_input)
-        rule_dict = {"history-of": [(0, 0)], "instance-of": [(0,1)]}
+        rules, rule_dict = read_rules(rule_input)
         valid_facts = []
         valid_facts = linkStep(facts, rules, rule_dict, valid_facts)
-        self.assertEqual(facts[0].neighbors, {("sk33", "me"): rules})
+        self.assertEqual(facts[0].neighbors, {("sk33", "me"): rules[108]})
         self.assertEqual(valid_facts, [(facts[0], {"C": "sk33", "B": "me"}, 108), (facts[1], {"C": "sk33", "A": "sk34"}, 108)])
 
     # """

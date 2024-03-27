@@ -137,8 +137,8 @@ class InputMethods(unittest.TestCase):
         rule_input = ["r(54,1,[6,7],kow(if([[universal,A]]),then([instance-of,[e,6,[A]],A,[e,7,[A]]]))).",
                       "r(54,1,[6,7],kow(if([[universal,A]]),then([instance-of,[e,6,[A]],A,[e,7,[A]]]))).",
                       "r(100,1,[6,7],kow(if([[universal,A]]),then([instance-of,[e,6,[A]],A,[e,7,[A]]])))."]
-        rules = read_rules(rule_input)
-        self.assertEqual(len(rules), 1)
+        rules, rule_dict = read_rules(rule_input)
+        self.assertEqual(len(rules.items()), 1)
 
 
 if __name__ == '__main__':
