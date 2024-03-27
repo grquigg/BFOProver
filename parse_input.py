@@ -4,13 +4,18 @@ from utils import display, is_skolem
 from node import FactNode
 from rule import RuleNode
 
-def read_rules(rules: list[str]) -> list[RuleNode]:
-    parsed_rules = []
+def read_rules(rules: list[str]) -> tuple[dict[int], dict[str,tuple[int,int]]]:
+    parsed_rules = {}
+    rule_dict = {}
     for rule in rules:
         parsed = parse_rule(rule)
-        if parsed not in parsed_rules:
-            parsed_rules.append(parsed)
-    return parsed_rules
+        if parsed not in parsed_rules.values():
+            parsed_rules[parsed.index] = parsed
+            for i in range(len(parsed.values)):
+                if parsed.values[i] not in rule_dict:
+                    rule_dict[parsed.values[i]] = []
+                rule_dict[parsed.values[i]].append((parsed.index, i))
+    return parsed_rules, rule_dict
 
 def parse_terms(if_string: str) -> list:
     clauses = []
