@@ -14,11 +14,12 @@ class LinkingMethods(unittest.TestCase):
         rule_input = ["r(61,1,[],kow(if([[instance-of,A,B,C]]),then([universal,B])))."]
         fact = read_fact(0, fact_input[0], False)
         rule = parse_rule(rule_input[0])
+        rules = {61: rule}
         self.assertEqual(len(rule.values), 1)
         self.assertEqual(fact.value, rule.values[0])
-        rule_dict = {"instance-of": [(0,0)]}
+        rule_dict = {"instance-of": [(61,0)]}
         valid_facts = []
-        valid_facts = linkStep([fact], [rule], rule_dict, valid_facts)
+        valid_facts = linkStep([fact], rules, rule_dict, valid_facts)
         self.assertEqual(fact.neighbors, {("my-thinking", "process", "t"): [rule]})
         self.assertEqual(valid_facts, [(fact, {"A": "my-thinking", "B": "process", "C": "t"}, 61)])
 
@@ -26,12 +27,12 @@ class LinkingMethods(unittest.TestCase):
         fact_input = ["t([instance-of,my-thinking,process,t])."]
         rule_input = ["r(172,1,[45],kow(if([[instance-of,B,process,A]]),then([occurrent-part-of,[e,45,[B]],B])))."]
         fact = read_fact(0, fact_input[0], False)
-        rule = {172: parse_rule(rule_input[0])}
-        self.assertEqual(fact.value, rule[172].values[0])
+        rules = {172: parse_rule(rule_input[0])}
+        self.assertEqual(fact.value, rules[172].values[0])
         rule_dict = {"instance-of": [(172,0)]}
         valid_facts = []
-        valid_facts = linkStep([fact], rule, rule_dict, valid_facts)
-        self.assertEqual(fact.neighbors, {("my-thinking", "process", "t"): [rule[172]]})
+        valid_facts = linkStep([fact], rules, rule_dict, valid_facts)
+        self.assertEqual(fact.neighbors, {("my-thinking", "process", "t"): [rules[172]]})
         self.assertEqual(valid_facts, [(fact, {"A": "t", "B": "my-thinking"}, 172)])
     """
     tests whether or not a link is created when a fact interacts with a rule where non variables elements in the
@@ -42,10 +43,11 @@ class LinkingMethods(unittest.TestCase):
         rule_input = ["r(172,1,[45],kow(if([[instance-of,B,occurrent,A]]),then([occurrent-part-of,[e,45,[B]],B])))."]
         fact = read_fact(0, fact_input[0], False)
         rule = parse_rule(rule_input[0])
+        rules = {172: rule}
         self.assertEqual(fact.value, rule.values[0])
-        rule_dict = {"instance-of": [(0,0)]}
+        rule_dict = {"instance-of": [(172,0)]}
         valid_facts = []
-        valid_facts = linkStep([fact], [rule], rule_dict, valid_facts)
+        valid_facts = linkStep([fact], rules, rule_dict, valid_facts)
         self.assertEqual(fact.neighbors, {})
         self.assertEqual(valid_facts, [])
     """
@@ -59,11 +61,12 @@ class LinkingMethods(unittest.TestCase):
         rule_input = ["r(355,1,[109],kow(if([[occupies-temporal-region,A,B]]),then_or([[instance-of,A,process,[e,109,[A,B]]],[instance-of,A,process-boundary,[e,109,[A,B]]]])))."]
         fact = read_fact(0, fact_input[0], skolems=True, skolem_list=skolem_table, skolem_count=skolem_counter)
         rule = parse_rule(rule_input[0])
+        rules = {355: rule}
         self.assertEqual(fact.args, ["my-thinking", "sk1"])
-        rule_dict = {"occupies-temporal-region": [(0,0)]}
+        rule_dict = {"occupies-temporal-region": [(355,0)]}
         valid_facts = []
-        valid_facts = linkStep([fact], [rule], rule_dict, valid_facts)
-        self.assertEqual(fact.neighbors, {("my-thinking", "sk1"): [rule]})
+        valid_facts = linkStep([fact], rules, rule_dict, valid_facts)
+        self.assertEqual(fact.neighbors, {("my-thinking", "sk1"): [rules[355]]})
         self.assertEqual(valid_facts, [(fact, {"A": "my-thinking", "B": "sk1"}, 355)])
 
         pass
@@ -76,9 +79,10 @@ class LinkingMethods(unittest.TestCase):
         rule_input = ["r(108,2,[],kow(if([[history-of,C,B],[instance-of,C,history,A]]),then([instance-of,B,material-entity,A])))."]
         facts = [read_fact(0, fact_input[0]), read_fact(1, fact_input[1])]
         rule = parse_rule(rule_input[0])
-        rule_dict = {"history-of": [(0, 0)], "instance-of": [(0,1)]}
+        rules = {108: rule}
+        rule_dict = {"history-of": [(108, 0)], "instance-of": [(108,1)]}
         valid_facts = []
-        valid_facts = linkStep(facts, [rule], rule_dict, valid_facts)
+        valid_facts = linkStep(facts, rules, rule_dict, valid_facts)
         self.assertEqual(facts[0].neighbors, {("sk33", "me"): [rule]})
         self.assertEqual(facts[1].neighbors, {("sk33", "history", "sk34"): [rule]})
         self.assertEqual(valid_facts, [(facts[0], {"C": "sk33", "B": "me"}, 108), (facts[1], {"C": "sk33", "A": "sk34"}, 108)])
@@ -110,7 +114,7 @@ class LinkingMethods(unittest.TestCase):
         rules, rule_dict = read_rules(rule_input)
         valid_facts = []
         valid_facts = linkStep(facts, rules, rule_dict, valid_facts)
-        self.assertEqual(facts[0].neighbors, {("sk33", "me"): rules[108]})
+        self.assertEqual(facts[0].neighbors, {("sk33", "me"): [rules[108]]})
         self.assertEqual(valid_facts, [(facts[0], {"C": "sk33", "B": "me"}, 108), (facts[1], {"C": "sk33", "A": "sk34"}, 108)])
 
     # """

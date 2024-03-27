@@ -51,7 +51,6 @@ class ModusPonens(unittest.TestCase):
         rules, rule_dict = read_rules(rule_input)
         valid_facts = []
         valid_facts = linkStep([fact], rules, rule_dict, valid_facts)
-        print(rules)
         self.assertEqual(len(rules.items()), 3)
         self.assertEqual(fact.neighbors, {("my-thinking", "process", "t"): [rules[61], rules[62], rules[63]]})
         self.assertEqual(valid_facts, [(fact, {"A": "my-thinking", "B": "process", "C": "t"}, 61), (fact, {"A": "my-thinking", "B": "process", "C": "t"}, 62),(fact, {"B": "my-thinking", "A": "process", "C": "t"}, 63)])

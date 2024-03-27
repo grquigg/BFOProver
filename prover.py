@@ -28,13 +28,10 @@ def modusPonens(valid_facts: list[(FactNode, dict, int)], facts: list[FactNode],
         fact_counter += 1
     return facts
 
-def linkStep(facts: list[FactNode], rules: list[RuleNode], rules_dict: dict[tuple[int,int]], valid_facts: list[(FactNode, dict, int)]):
+def linkStep(facts: list[FactNode], rules: dict[int, RuleNode], rules_dict: dict[tuple[int,int]], valid_facts: list[(FactNode, dict, int)]):
     for i, fact in enumerate(facts):
         for rule in rules_dict[fact.value]:
             #create an empty dict
-            print(rules[rule[0]])
-            print(fact)
-            assert(type(rules[rule[0]]) == RuleNode)
             assert(len(rules[rule[0]].args[rule[1]]) == len(fact.args))
             values = {}
             valid_fact = True
